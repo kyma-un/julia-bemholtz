@@ -1,12 +1,15 @@
+
 PROJ_NAME := julia-bemholtz
 
+MSH_NAME := torus_coil.geo
+MSH_FOLDER := meshes
 
 all: build
 
-paraview: build
-	cd build && cpack -G TGZ
+paraview: 
+	paraview 
 
-
-gmsh: gmsh 
+gmsh: 
+	gmsh ${MSH_FOLDER}/${MSH_NAME}
 
 
