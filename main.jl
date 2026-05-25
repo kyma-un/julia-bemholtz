@@ -2,6 +2,8 @@ using Gridap
 using GridapGmsh
 using LinearAlgebra
 
+# Hola sofi
+
 # ============================================================
 # Bobina de Helmholtz — Formulación magnetostática
 # ∇×(1/μ ∇×A) = J   con gauge de Coulomb ∇·A = 0
