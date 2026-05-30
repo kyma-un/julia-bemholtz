@@ -1,50 +1,66 @@
 // ============================================================
-// Bobina de Helmholtz — malla 3D volumétrica para FEM
+// Bobina de Helmholtz — bobinas filamentarias (curvas 1D)
+// Malla volumétrica de aire + curvas embebidas como fuente
 // ============================================================
 SetFactory("OpenCASCADE");
 
 // --- Parámetros ---------------------------------------------
-R     = 0.100;    // Radio principal de la bobina [m]
-r_w   = 0.008;    // Radio sección transversal del hilo [m]
-d     = R / 2;    // Separación centro→bobina (condición Helmholtz: d = R/2)
-R_dom = 3.0 * R;  // Radio del dominio de aire
+R     = 0.100;     // Radio de las bobinas [m]
+d     = R / 2;     // Separación Helmholtz: d = R/2
+R_dom = 3.0 * R;   // Radio del dominio de aire
 
-// --- Geometría ----------------------------------------------
+lc_coil = R / 40;  // tamaño de malla sobre las bobinas (fino)
+lc_far  = R_dom/5; // tamaño de malla en la frontera (grueso)
 
-// Bobina superior
-Torus(1) = {0, 0,  d, R, r_w};
+// --- Dominio de aire (esfera) -------------------------------
+Sphere(1) = {0, 0, 0, R_dom};
 
-// Bobina inferior
-Torus(2) = {0, 0, -d, R, r_w};
+// --- Bobinas como círculos (curvas) -------------------------
+// Círculo superior en z = +d
+Circle(100) = {0, 0,  d, R, 0, 2*Pi};
+// Círculo inferior en z = -d
+Circle(101) = {0, 0, -d, R, 0, 2*Pi};
 
-// Dominio de aire (esfera)
-Sphere(3) = {0, 0, 0, R_dom};
-
-// Fragmentar — crea interfaces coherentes entre bobinas y aire
-// Resultado: coil1(1), coil2(2), aire(3)
-BooleanFragments{ Volume{3}; Delete; }{ Volume{1}; Volume{2}; Delete; }
+// Embeber las curvas en el volumen de aire para que la malla
+// las respete (nodos y aristas alineados con los círculos)
+Curve{100, 101} In Volume{1};
 
 // --- Grupos físicos -----------------------------------------
-Physical Volume("coil1")     = {1};
-Physical Volume("coil2")     = {2};
-Physical Volume("air")       = {3};
-Physical Surface("boundary") = {1};   // superficie exterior esfera
+Physical Volume("air")       = {1};
+Physical Curve("coil1")      = {100};
+Physical Curve("coil2")      = {101};
+Physical Surface("boundary") = {1};   // superficie exterior de la esfera
 
 // --- Control de tamaño de malla -----------------------------
-Mesh.Algorithm3D = 4;   // Frontal-Delaunay → tetraedros limpios
+Mesh.Algorithm3D = 10;   // HXT: rápido y robusto para volúmenes grandes
 
-// Fino en bobinas, grueso lejos
+// Refinar cerca de las curvas de las bobinas
 Field[1] = Distance;
-Field[1].VolumesList = {1, 2};
+Field[1].CurvesList = {100, 101};
+Field[1].Sampling   = 200;
 
 Field[2] = Threshold;
-Field[2].InField = 1;
-Field[2].SizeMin = r_w / 2;        // fino dentro de la bobina
-Field[2].SizeMax = R_dom / 5;      // grueso en el exterior
-Field[2].DistMin = r_w;
-Field[2].DistMax = R;
+Field[2].InField  = 1;
+Field[2].SizeMin  = lc_coil;
+Field[2].SizeMax  = lc_far;
+Field[2].DistMin  = R / 10;   // zona fina alrededor del hilo
+Field[2].DistMax  = R;        // transición suave hacia el exterior
 
-Background Field = 2;
+// Refinar también la región central (donde medimos el campo uniforme)
+Field[3] = Ball;
+Field[3].Radius   = R / 2;
+Field[3].Thickness = R / 4;
+Field[3].VIn  = R / 25;       // fino en el centro de Helmholtz
+Field[3].VOut = lc_far;
+Field[3].XCenter = 0; Field[3].YCenter = 0; Field[3].ZCenter = 0;
+
+Field[10] = Min;
+Field[10].FieldsList = {2, 3};
+Background Field = 10;
+
+Mesh.MeshSizeExtendFromBoundary = 0;
+Mesh.MeshSizeFromPoints = 0;
+Mesh.MeshSizeFromCurvature = 0;
 
 // --- Generar y guardar --------------------------------------
 Mesh 3;

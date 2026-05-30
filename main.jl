@@ -2,92 +2,79 @@ using Gridap
 using GridapGmsh
 using LinearAlgebra
 
-# Hola sofi
-
 # ============================================================
-# Bobina de Helmholtz — Formulación magnetostática
-# ∇×(1/μ ∇×A) = J   con gauge de Coulomb ∇·A = 0
+# Bobina de Helmholtz — fuente volumétrica gaussiana (robusta)
+# ∇×(ν ∇×A) + ε A = J,  J = anillo gaussiano azimutal
 # ============================================================
 
 # --- Malla --------------------------------------------------
 model = GmshDiscreteModel("meshes/torus_coil.msh")
 
-# --- Espacio de funciones -----------------------------------
 order = 1
 reffe = ReferenceFE(nedelec, Float64, order)
-V = TestFESpace(model, reffe;
-                conformity     = :HCurl,
-                dirichlet_tags = ["boundary"])
+V = TestFESpace(model, reffe; conformity = :HCurl, dirichlet_tags = ["boundary"])
 U = TrialFESpace(V, VectorValue(0.0, 0.0, 0.0))
 
-println("Grados de libertad libres : ", num_free_dofs(V))
-
-# --- Triangulaciones ----------------------------------------
-Ω      = Triangulation(model)
-dΩ     = Measure(Ω, 2*order + 1)
-
-Ωcoil  = Triangulation(model; tags = ["coil1", "coil2"])
-dΩcoil = Measure(Ωcoil, 2*order + 1)
-
-Ωair   = Triangulation(model; tags = ["air"])
-dΩair  = Measure(Ωair, 2*order + 1)
+Ω  = Triangulation(model)
+dΩ = Measure(Ω, 2*order + 1)
+println("Celdas: ", num_cells(Ω), " | DOFs libres: ", num_free_dofs(V))
 
 # --- Parámetros físicos -------------------------------------
-const μ₀  = 4π * 1e-7        # permeabilidad vacío     [H/m]
-const I₀  = 1.0               # corriente por espira    [A]
-const R   = 0.100             # radio de la bobina      [m]
-const r_w = 0.008             # radio sección del hilo  [m]
-const J₀  = I₀ / (π * r_w^2) # densidad de corriente   [A/m²]
-const α   = 1.0 / μ₀         # penalización gauge       [m/H]
+const μ₀ = 4π * 1e-7
+const I₀ = 1.0           # corriente por bobina [A]
+const R  = 0.100          # radio de las bobinas [m]
+const dz = R/2            # posición Helmholtz: z = ±R/2
+const ν  = 1.0 / μ₀
+const ε  = ν * 1e-6      # regularización de gauge
+const σ  = 0.006          # grosor del anillo gaussiano [m]
 
-const μ_air  = μ₀
-const μ_coil = μ₀   # cobre: μ_r ≈ 1
+# Normalización: ∫∫ amp·exp(-ρ²/2σ²) dA = I₀  sobre la sección
+# La integral de una gaussiana 2D es 2πσ², por tanto amp = I₀/(2πσ²)
+const amp = I₀ / (2π * σ^2)
 
-# --- Fuente de corriente ------------------------------------
-# J azimutal: ê_φ = (-y/r, x/r, 0) — dirección real en una espira
-function J(x)
+# --- Fuente: dos anillos azimutales gaussianos --------------
+function Jsrc(x)
     r = sqrt(x[1]^2 + x[2]^2)
-    r < 1e-10 && return VectorValue(0.0, 0.0, 0.0)
-    return J₀ * VectorValue(-x[2]/r, x[1]/r, 0.0)
+    r < 1e-12 && return VectorValue(0.0, 0.0, 0.0)
+    φ̂ = VectorValue(-x[2]/r, x[1]/r, 0.0)   # dirección azimutal
+    # distancia² al centro de cada anillo en el plano (r, z)
+    d1 = (r - R)^2 + (x[3] - dz)^2          # anillo superior
+    d2 = (r - R)^2 + (x[3] + dz)^2          # anillo inferior
+    g  = exp(-d1/(2σ^2)) + exp(-d2/(2σ^2))
+    return amp * g * φ̂
 end
+J_cf = CellField(Jsrc, Ω)
+
+# Verifica la corriente total inyectada (debería ≈ I₀ por bobina)
+# Flujo de J a través del plano y=0, x>0 (corta ambos anillos una vez cada uno)
+println("amp = ", round(amp, sigdigits=4), " A/m²")
 
 # --- Formas variacionales -----------------------------------
-a(u,v) = ∫( (1/μ_air)  * (∇×u)⋅(∇×v)
-           + α          * (∇⋅u) * (∇⋅v) )dΩ
+a(u,v) = ∫( ν*((∇×u)⋅(∇×v)) + ε*(u⋅v) )dΩ
+l(v)   = ∫( v⋅J_cf )dΩ
 
-l(v)   = ∫( v⋅J )dΩcoil
-
-# --- Ensamblaje y solución ----------------------------------
-println("Ensamblando sistema...")
+# --- Solución -----------------------------------------------
+println("Ensamblando y resolviendo...")
 op = AffineFEOperator(a, l, U, V)
-
-println("Resolviendo...")
 Ah = solve(op)
-println("✓ Solución obtenida")
+println("✓ Resuelto")
 
-# --- Postproceso físico -------------------------------------
-Bh = ∇ × Ah                  # densidad de flujo  B = ∇×A    [T]
-Hh = (1/μ₀) * Bh             # intensidad de campo H = B/μ   [A/m]
+# --- Postproceso --------------------------------------------
+Bh = ∇ × Ah
+Hh = (1/μ₀) * Bh
+normB(B) = sqrt(B⋅B)
+Bmag = normB ∘ Bh
 
-# Energía magnética almacenada: W = (1/2)∫ B·H dΩ
 W = 0.5 * sum(∫( Bh⋅Hh )dΩ)
-println("Energía magnética almacenada : W = $(round(W, sigdigits=4)) J")
+println("Energía magnética     : W = $(round(W, sigdigits=4)) J")
 
-# Campo B teórico en el centro (fórmula analítica Helmholtz)
-B_teorico = μ₀ * (4/5)^(3/2) * I₀ / R
-println("B en centro (teórico)        : $(round(B_teorico*1e6, sigdigits=4)) μT")
-println("Nota: comparar con |B| en (0,0,0) en ParaView")
+B_centro = μ₀ * (4/5)^(3/2) * I₀ / R
+println("B centro (teórico)    : $(round(B_centro*1e6, sigdigits=4)) µT")
 
-# --- Exportar a ParaView ------------------------------------
+# --- Exportar -----------------------------------------------
 mkpath("results")
 writevtk(Ω, "results/magnetostatic",
-    cellfields = [
-        "A"  => Ah,    # potencial vector         [Wb/m]
-        "B"  => Bh,    # densidad de flujo        [T]
-        "H"  => Hh,    # intensidad de campo      [A/m]
-    ])
-
-println("✓ Exportado : results/magnetostatic.vtu")
-println("  Campos disponibles en ParaView: A, B, H")
-println("  Para |B|: Filters → Calculator → mag(B)")
-println("  Para isosuperficies: Filters → Contour → selecciona mag(B)")
+    cellfields = ["A"=>Ah, "B"=>Bh, "H"=>Hh, "normB"=>Bmag, "J"=>J_cf])
+println("✓ Exportado results/magnetostatic.vtu")
+println("  Verificar: Plot Over Line eje z (0,0,-0.15)→(0,0,0.15), componente B_Z")
+println("  Debe verse meseta plana en el centro ≈ $(round(B_centro*1e6,sigdigits=3)) µT")
