@@ -344,4 +344,7 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+# Results
+/results
+
 # End of https://www.toptal.com/developers/gitignore/api/macos,windows,linux,python,julia,matlab,cmake,visualstudiocode
