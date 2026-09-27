@@ -36,7 +36,6 @@ include(joinpath(@__DIR__, "src", "stationary", "helmholtz.jl"))
 println("Ensamblando y resolviendo...")
 op = AffineFEOperator(a, l, U, V)
 Ah = solve(op)
-println("✓ Resuelto")
 
 # --- Resultados ---------------------------------------------
 #

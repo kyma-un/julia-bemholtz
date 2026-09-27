@@ -11,3 +11,7 @@ paraview:
 
 mesh:
 	gmsh ${MSH_FOLDER}/${MSH_NAME}.geo
+
+clean_results:
+	println("Borrando resultados en /results...")
+	rm results/*.vtu
