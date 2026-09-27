@@ -2,7 +2,7 @@
 
 Simulación magnetostática por elementos finitos de una bobina de Helmholtz, pensada como banco de campo magnético uniforme para el ADCS de un CubeSat.
 
-El caso que corre hoy resuelve el potencial vectorial magnético de un par Helmholtz y exporta el campo para revisarlo en ParaView. Los directorios `src/stationary`, `src/transient` y `src/closed_loop` reservan el lugar de los análisis estacionario, transitorio y en lazo cerrado; todavía no tienen código.
+`main.jl` concentra los parámetros físicos, la solución y la exportación del campo. El planteamiento de elementos finitos de cada caso vive en `src`. Hoy solo está el estacionario, en `src/stationary/helmholtz.jl`. `src/transient` y `src/closed_loop` siguen reservados.
 
 ## Formulación
 
@@ -31,12 +31,13 @@ y el script la imprime junto con la energía magnética \(\tfrac12 \int \mathbf{
 
 ```
 .
-├── main.jl                  # caso Helmholtz (ensamble, solución y VTK)
+├── main.jl                  # parámetros, solve y exportación VTK
 ├── Project.toml
 ├── Manifest.toml            # entorno fijado en Julia 1.11.7
 ├── gmsh/torus_coil.geo      # dominio esférico y curvas de las bobinas
 ├── src/
-│   ├── stationary/          # reservado
+│   ├── stationary/
+│   │   └── helmholtz.jl     # malla, espacios, fuente y formas débiles
 │   ├── transient/           # reservado
 │   └── closed_loop/         # reservado
 ├── config/                  # reservado
@@ -44,7 +45,7 @@ y el script la imprime junto con la energía magnética \(\tfrac12 \int \mathbf{
 └── results/                 # salidas VTK
 ```
 
-`main.jl` modela la fuente como dos anillos gaussianos volumétricos. La geometría de Gmsh describe las bobinas como curvas filamentarias embebidas en una esfera de aire de radio \(3R\), con refinamiento junto a las bobinas y en el centro del par.
+`src/stationary/helmholtz.jl` arma la malla, los espacios de Nédélec y la fuente de dos anillos gaussianos, y deja listas las formas `a` y `l`. `main.jl` las incluye, resuelve y escribe el VTK. La geometría de Gmsh describe las bobinas como curvas filamentarias embebidas en una esfera de aire de radio \(3R\), con refinamiento junto a las bobinas y en el centro del par.
 
 ## Requisitos
 
