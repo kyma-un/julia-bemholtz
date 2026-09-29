@@ -8,7 +8,7 @@ using LinearAlgebra
 # ============================================================
 
 # --- Malla --------------------------------------------------
-model = GmshDiscreteModel("meshes/torus_coil.msh")
+model = GmshDiscreteModel("gmsh/torus_coil.msh")
 
 order = 1
 reffe = ReferenceFE(nedelec, Float64, order)
