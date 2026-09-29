@@ -19,8 +19,8 @@ using LinearAlgebra
 
 const μ₀ = 4π * 1e-7
 const I₀ = 1.0           # corriente por bobina [A]
-const R  = 0.100          # radio de las bobinas [m]
-const dz = R/2            # posición Helmholtz: z = ±R/2
+const R  = 0.60           # radio [m] (60 cm)
+const dz = R/2            # bobinas en z = ±R/2; separación entre planos = R (60 cm)
 const ν  = 1.0 / μ₀
 const ε  = ν * 1e-6      # regularización de gauge
 const σ  = 0.006          # grosor del anillo gaussiano [m]

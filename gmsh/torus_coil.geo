@@ -5,9 +5,9 @@
 SetFactory("OpenCASCADE");
 
 // --- Parámetros ---------------------------------------------
-R     = 0.100;     // Radio de las bobinas [m]
-d     = R / 2;     // Separación Helmholtz: d = R/2
-R_dom = 3.0 * R;   // Radio del dominio de aire
+R     = 0.60;      // radio [m] (60 cm)
+sep   = 0.60;      // separación entre planos [m] (60 cm): par de Helmholtz
+R_dom = 3.0 * R;   // radio del dominio de aire
 
 lc_coil = R / 40;  // tamaño de malla sobre las bobinas (fino)
 lc_far  = R_dom/5; // tamaño de malla en la frontera (grueso)
@@ -16,20 +16,9 @@ lc_far  = R_dom/5; // tamaño de malla en la frontera (grueso)
 Sphere(1) = {0, 0, 0, R_dom};
 
 // --- Bobinas como círculos (curvas) -------------------------
-// Círculo superior en z = +d
-Circle(100) = {0, 0,  d, R, 0, 2*Pi};
-// Círculo inferior en z = -d
-Circle(101) = {0, 0, -d, R, 0, 2*Pi};
-
-// Embeber las curvas en el volumen de aire para que la malla
-// las respete (nodos y aristas alineados con los círculos)
-Curve{100, 101} In Volume{1};
-
-// --- Grupos físicos -----------------------------------------
-Physical Volume("air")       = {1};
-Physical Curve("coil1")      = {100};
-Physical Curve("coil2")      = {101};
-Physical Surface("boundary") = {1};   // superficie exterior de la esfera
+// Planos z = ±sep/2. La distancia entre bobinas es sep = R.
+Circle(100) = {0, 0,  sep/2, R, 0, 2*Pi};
+Circle(101) = {0, 0, -sep/2, R, 0, 2*Pi};
 
 // --- Control de tamaño de malla -----------------------------
 Mesh.Algorithm3D = 10;   // HXT: rápido y robusto para volúmenes grandes
@@ -62,6 +51,17 @@ Mesh.MeshSizeExtendFromBoundary = 0;
 Mesh.MeshSizeFromPoints = 0;
 Mesh.MeshSizeFromCurvature = 0;
 
-// --- Generar y guardar --------------------------------------
-Mesh 3;
-Save "torus_coil.msh";
+// Si otro .geo incluye este archivo, define AS_INCLUDE = 1 antes del Include
+// y se queda solo con la geometría. Abierto solo, mallar como siempre.
+If (Exists(AS_INCLUDE) == 0)
+  // Embeber las curvas en el aire para que la malla las respete
+  Curve{100, 101} In Volume{1};
+
+  Physical Volume("air")       = {1};
+  Physical Curve("coil1")      = {100};
+  Physical Curve("coil2")      = {101};
+  Physical Surface("boundary") = {1};
+
+  Mesh 3;
+  Save "torus_coil.msh";
+EndIf
