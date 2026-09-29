@@ -15,3 +15,6 @@ mesh:
 clean_results:
 	println("Borrando resultados en /results...")
 	rm results/*.vtu
+
+sim:
+	julia --project=. main.jl

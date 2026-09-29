@@ -9,8 +9,9 @@ R     = 0.60;      // radio [m] (60 cm)
 sep   = 0.60;      // separación entre planos [m] (60 cm): par de Helmholtz
 R_dom = 3.0 * R;   // radio del dominio de aire
 
-lc_coil = R / 40;  // tamaño de malla sobre las bobinas (fino)
-lc_far  = R_dom/5; // tamaño de malla en la frontera (grueso)
+lc_coil = R / 36;   // tamaño de malla sobre las bobinas
+lc_in   = 0.022;     // tamaño en el centro
+lc_far  = 0.45;      // tamaño en la frontera de la esfera
 
 // --- Dominio de aire (esfera) -------------------------------
 Sphere(1) = {0, 0, 0, R_dom};
@@ -21,7 +22,12 @@ Circle(100) = {0, 0,  sep/2, R, 0, 2*Pi};
 Circle(101) = {0, 0, -sep/2, R, 0, 2*Pi};
 
 // --- Control de tamaño de malla -----------------------------
-Mesh.Algorithm3D = 10;   // HXT: rápido y robusto para volúmenes grandes
+Mesh.Algorithm3D = 1;    // Delaunay: tetraedros más parejos
+
+// h = h(r): el mismo tamaño a un radio dado, en cualquier dirección.
+// Crece con r*r para no dejar el interior a 3 cm hasta la frontera.
+Field[6] = MathEval;
+Field[6].F = "0.022 + 0.428*(Sqrt(x*x+y*y+z*z)/1.8)*(Sqrt(x*x+y*y+z*z)/1.8)";
 
 // Refinar cerca de las curvas de las bobinas
 Field[1] = Distance;
@@ -32,19 +38,11 @@ Field[2] = Threshold;
 Field[2].InField  = 1;
 Field[2].SizeMin  = lc_coil;
 Field[2].SizeMax  = lc_far;
-Field[2].DistMin  = R / 10;   // zona fina alrededor del hilo
-Field[2].DistMax  = R;        // transición suave hacia el exterior
-
-// Refinar también la región central (donde medimos el campo uniforme)
-Field[3] = Ball;
-Field[3].Radius   = R / 2;
-Field[3].Thickness = R / 4;
-Field[3].VIn  = R / 25;       // fino en el centro de Helmholtz
-Field[3].VOut = lc_far;
-Field[3].XCenter = 0; Field[3].YCenter = 0; Field[3].ZCenter = 0;
+Field[2].DistMin  = 0.035;    // zona fina alrededor del hilo
+Field[2].DistMax  = 0.14;     // el resto lo da el campo radial
 
 Field[10] = Min;
-Field[10].FieldsList = {2, 3};
+Field[10].FieldsList = {2, 6};
 Background Field = 10;
 
 Mesh.MeshSizeExtendFromBoundary = 0;

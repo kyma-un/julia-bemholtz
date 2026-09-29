@@ -4,8 +4,8 @@
 //
 // Diámetro y largo de los magnetorquers:
 // ============================================================
-mt_diameter = 0.030;   // [m]  30 mm
-mt_length   = 0.060;   // [m]  60 mm
+mt_diameter = 0.010;   // [m]  10 mm
+mt_length   = 0.140;   // [m]  140 mm
 
 AS_INCLUDE = 1;
 Include "torus_coil.geo";
@@ -50,10 +50,10 @@ Field[4].Sampling = 80;
 
 Field[5] = Threshold;
 Field[5].InField  = 4;
-Field[5].SizeMin  = mt_diameter / 8;
-Field[5].SizeMax  = lc_far;
-Field[5].DistMin  = mt_radius;
-Field[5].DistMax  = R;
+Field[5].SizeMin  = mt_diameter / 3;
+Field[5].SizeMax  = lc_far;   // lejos de las varillas no aplasta el campo radial
+Field[5].DistMin  = mt_diameter;
+Field[5].DistMax  = 0.05;
 
 Field[11] = Min;
 Field[11].FieldsList = {10, 5};

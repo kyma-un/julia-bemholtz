@@ -6,13 +6,13 @@ SetFactory("OpenCASCADE");
 
 // --- Parámetros ---------------------------------------------
 If (Exists(mt_diameter) == 0)
-  mt_diameter = 0.030;   // diámetro [m]  (30 mm)
+  mt_diameter = 0.010;   // diámetro [m]  (10 mm)
 EndIf
 If (Exists(mt_length) == 0)
-  mt_length = 0.060;     // largo [m]      (60 mm)
+  mt_length = 0.140;     // largo [m]      (140 mm)
 EndIf
 
-mt_gap    = 0.002;                 // holgura para que no se toquen [m]
+mt_gap    = 0.003;                 // holgura para que no se toquen [m]
 mt_radius = mt_diameter / 2;
 
 // Las bobinas de Helmholtz están en planos horizontales (normal +Z).
